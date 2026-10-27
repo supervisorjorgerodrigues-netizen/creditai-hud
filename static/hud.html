@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CreditAI Engine — Visual Control HUD</title>
+<link rel="stylesheet" href="/static/hud.css" />
+<script src="/static/vendor/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="panel topbar">
+    <div class="row">
+      <span class="brand"><span class="bolt">⚡</span>CREDITAI ENGINE</span>
+      <span class="badge cyan">Visual Control HUD</span>
+      <span class="badge amber">⚡ Modelo: <b id="hModel">CreditAI-HGB-v2</b></span>
+      <span class="badge sky">🧭 Dataset: <b id="hData">12k</b> • 11 features</span>
+      <span class="badge ghost">● Apenas CPU</span>
+      <span class="grow"></span>
+      <nav class="tabs-nav">
+        <a href="/" class="on">🏋 Treinamento (Logs &amp; Status)</a>
+        <a href="/web/">🎮 Avaliação (Simulação &amp; Scores)</a>
+      </nav>
+    </div>
+    <div class="row">
+      <span id="statusPill" class="pill IDLE"><span class="dot"></span><span id="statusTxt">IDLE</span></span>
+      <button class="btn go" id="btnStart">▶ INICIAR</button>
+      <button class="btn stop" id="btnStop" disabled>■ PARAR</button>
+      <button class="btn" id="btnCfg">⚙ Configurações</button>
+      <button class="btn" id="btnCkpt">💾 Checkpoints</button>
+      <a class="btn" href="/docs" target="_blank">🌐 API Docs ↗</a>
+      <button class="btn" id="btnSync">🔄 Sincronizar Modelo</button>
+      <button class="btn amber" id="btnFloat">🗔 Flutuante</button>
+      <span class="grow"></span>
+      <span class="muted" id="hDur">duração: 0.0s</span>
+    </div>
+    <div class="progress-strip"><i id="progBar"></i></div>
+  </header>
+
+  <!-- ===================== METRIC CARDS ===================== -->
+  <section class="cards" id="cards"></section>
+
+  <!-- ===================== TERMINAL ===================== -->
+  <section class="panel term">
+    <div class="row">
+      <span class="live" style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)"></span>
+      <span class="term-title">🖥 TERMINAL DE LOGS DO MOTOR</span>
+      <span class="badge green" id="termState">PRONTO</span>
+      <span class="badge ghost" id="lineCount">0 / 0 linhas</span>
+      <span class="grow"></span>
+      <label class="muted row" style="gap:5px"><input type="checkbox" id="autoScroll" checked /> Auto-scroll</label>
+      <button class="btn sm" id="btnCopy">📋 Copiar</button>
+      <button class="btn sm" id="btnClear">🗑 Limpar</button>
+      <button class="btn sm" id="btnCfg2">⚙ Configurações</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="filters row" id="filters">
+        <button data-f="ALL" class="on">Todos</button>
+        <button data-f="TREINO">Treino</button>
+        <button data-f="VALID">Validação</button>
+        <button data-f="CHECKPOINT">Checkpoint</button>
+        <button data-f="SISTEMA">Sistema</button>
+        <button data-f="ERRO">Erros</button>
+      </div>
+      <span class="grow"></span>
+      <input class="input" id="logFilter" placeholder="🔍 Filtrar log..." style="width:260px" />
+    </div>
+    <div class="logbox" id="logbox"></div>
+  </section>
+
+  <!-- ===================== CURVES ===================== -->
+  <section class="grid3">
+    <div class="panel">
+      <div class="ptitle">CURVA DE APRENDIZADO — ROC-AUC <span class="sub">treino vs validação</span></div>
+      <div class="pbody"><div class="chartbox"><canvas id="chAuc"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle" style="color:var(--purple)">FUNÇÃO DE PERDA — LOG LOSS <span class="sub">detecção de overfitting</span></div>
+      <div class="pbody"><div class="chartbox"><canvas id="chLoss"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle" style="color:var(--rose)">CALIBRAÇÃO &amp; SEPARAÇÃO <span class="sub">ECE × KS</span></div>
+      <div class="pbody"><div class="chartbox"><canvas id="chCal"></canvas></div></div>
+    </div>
+  </section>
+
+  <!-- ===================== FINAL REPORT ===================== -->
+  <section class="grid2">
+    <div class="panel">
+      <div class="ptitle" style="color:var(--green)">RELATÓRIO FINAL — CONJUNTO DE TESTE (15%) <span class="sub" id="repMeta">aguardando treino</span></div>
+      <div class="pbody">
+        <table class="tbl" id="repTable"></table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitle" style="color:var(--amber)">MATRIZ DE CONFUSÃO &amp; CONFIABILIDADE <span class="sub">teste calibrado</span></div>
+      <div class="pbody" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div id="cmBox" class="cm"></div>
+        <div class="chartbox" style="height:190px"><canvas id="chRel"></canvas></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== MODAIS ===================== -->
+<div class="modal-bg hidden" id="cfgModal">
+  <div class="panel modal">
+    <h3>⚙ CONFIGURAÇÕES DO MOTOR DE TREINO</h3>
+    <div class="form-grid">
+      <div class="field"><label>Amostras do dataset</label><input class="input" type="number" id="cfg_n_amostras" step="1000" min="1000" /></div>
+      <div class="field"><label>Iterações máximas (árvores)</label><input class="input" type="number" id="cfg_max_iter" step="20" /></div>
+      <div class="field"><label>Passo de telemetria</label><input class="input" type="number" id="cfg_passo_iter" min="5" /></div>
+      <div class="field"><label>Learning rate</label><input class="input" type="number" id="cfg_learning_rate" step="0.005" /></div>
+      <div class="field"><label>Profundidade máx.</label><input class="input" type="number" id="cfg_max_depth" min="2" max="16" /></div>
+      <div class="field"><label>Paciência (early stop)</label><input class="input" type="number" id="cfg_paciencia" min="1" /></div>
+      <div class="field"><label>Limiar de decisão</label><input class="input" type="number" id="cfg_limiar_decisao" step="0.01" min="0.05" max="0.95" /></div>
+      <div class="field"><label>Pausa visual (s)</label><input class="input" type="number" id="cfg_pausa_visual_s" step="0.02" min="0" /></div>
+    </div>
+    <label class="row muted" style="margin-top:12px"><input type="checkbox" id="cfg_regerar_dataset" /> Regerar dataset sintético</label>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" data-close>Cancelar</button>
+      <button class="btn go" id="cfgSave">Salvar &amp; Iniciar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="ckModal">
+  <div class="panel modal">
+    <h3>💾 CHECKPOINTS PERSISTIDOS</h3>
+    <table class="tbl" id="ckTable"></table>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" data-close>Fechar</button></div>
+  </div>
+</div>
+
+<div class="panel floating hidden" id="floatBox">
+  <div class="row" style="justify-content:space-between;margin-bottom:6px"><b style="color:var(--yellow)">⚡ MINI HUD</b><span class="mute">arraste</span></div>
+  <div class="k">Status <b id="fStatus">IDLE</b></div>
+  <div class="k">Iteração <b id="fIter">—</b></div>
+  <div class="k">AUC val <b id="fAuc">—</b></div>
+  <div class="k">KS <b id="fKs">—</b></div>
+  <div class="k">Pico <b id="fPico">—</b></div>
+</div>
+
+<script src="/static/common.js"></script>
+<script src="/static/hud.js"></script>
+</body>
+</html>

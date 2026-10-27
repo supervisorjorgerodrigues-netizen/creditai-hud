@@ -1,0 +1,48 @@
+{
+  "nome": "CreditAI-HGB-v2",
+  "versao": "2.0.0",
+  "algoritmo": "HistGradientBoosting (monotônico) + Calibração Platt",
+  "melhor_iteracao": 190,
+  "treinado_em": "2026-10-26T20:44:16",
+  "metricas_teste": {
+    "particao": "teste",
+    "amostras": 1800,
+    "roc_auc": 0.8132,
+    "gini": 0.6263,
+    "ks": 0.4843,
+    "log_loss": 0.4618,
+    "brier": 0.1512,
+    "ece": 0.0269,
+    "acuracia": 0.7728,
+    "precisao": 0.8031,
+    "recall": 0.9005,
+    "f1_score": 0.849,
+    "taxa_aprovacao": 0.7956,
+    "matriz_confusao": [
+      [
+        241,
+        282
+      ],
+      [
+        127,
+        1150
+      ]
+    ]
+  },
+  "features": [
+    "idade",
+    "pontuacao_credito",
+    "renda_mensal",
+    "valor_emprestimo",
+    "prazo_meses",
+    "tempo_emprego_anos",
+    "inadimplencia_previa",
+    "consultas_6m",
+    "utilizacao_cartao",
+    "tipo_moradia",
+    "finalidade_emprestimo"
+  ],
+  "uso_pretendido": "Apoio à decisão de concessão de crédito pessoal (dados sintéticos/educacional).",
+  "limitacoes": "Base sintética; recalibrar e auditar viés antes de qualquer uso real.",
+  "tamanho_mb": 0.14
+}

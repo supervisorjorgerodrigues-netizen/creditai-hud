@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>C.R.E.D.I.T — Live Evaluation</title>
+<link rel="stylesheet" href="/static/hud.css" />
+<script src="/static/vendor/chart.umd.min.js"></script>
+<style>
+  .layout { display: grid; grid-template-columns: 400px minmax(0, 1fr) 430px; gap: 14px; align-items: start; }
+  .side { max-height: calc(100vh - 170px); overflow: auto; }
+  .telemetry { display: inline-flex; gap: 18px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2); font-size: 12.5px; flex-wrap: wrap; }
+  .telemetry b { font-weight: 800; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .seg button { font-family: var(--mono); padding: 8px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--txt-dim); font-weight: 700; cursor: pointer; }
+  .seg button.on { background: linear-gradient(180deg, #0ea5c6, #0b7f9a); color: #fff; border-color: var(--cyan); }
+  .quick { margin-top: 12px; border: 1px solid rgba(168, 85, 247, .55); border-radius: 10px; padding: 12px; background: linear-gradient(160deg, rgba(168, 85, 247, .14), rgba(245, 158, 11, .06)); }
+  .quick h4 { margin: 0 0 6px; color: var(--yellow); font-size: 12px; display: flex; justify-content: space-between; }
+  .quick p { margin: 0 0 10px; color: var(--txt-dim); font-size: 11px; line-height: 1.5; }
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sect { margin-top: 16px; color: var(--txt-dim); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+  .f { margin-top: 10px; }
+  .f .lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--txt-dim); margin-bottom: 4px; }
+  .f .lbl b { color: var(--cyan); }
+  input[type=range] { width: 100%; accent-color: var(--cyan); }
+  select.input, input.input { width: 100%; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .runtime { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; background: var(--bg-2); }
+  .runtime div { display: flex; justify-content: space-between; padding: 3px 0; }
+  .runtime b { color: var(--cyan); font-weight: 600; }
+
+  .viewport { position: relative; border-radius: 10px; border: 1px solid var(--line); background:
+      radial-gradient(500px 300px at 50% 45%, rgba(34, 211, 238, .08), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(38, 54, 90, .15) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(90deg, rgba(38, 54, 90, .15) 0 1px, transparent 1px 32px), #060b16;
+    min-height: 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+  .gauge-wrap { display: grid; place-items: center; position: relative; }
+  .gauge-center { position: absolute; text-align: center; }
+  .gauge-center .sc { font-size: 50px; font-weight: 800; line-height: 1; text-shadow: 0 0 26px currentColor; }
+  .gauge-center .rt { margin-top: 6px; font-size: 13px; font-weight: 800; letter-spacing: 2px; }
+  .gauge-center .fx { font-size: 10.5px; font-weight: 700; color: var(--txt-dim); margin-top: 3px; letter-spacing: 1px; }
+  .gauge-center .lb { font-size: 10px; color: var(--txt-mute); letter-spacing: 2px; margin-top: 2px; }
+  .decision { border-radius: 10px; padding: 12px 14px; font-weight: 800; font-size: 15px; letter-spacing: 1px; border: 1px solid; }
+  .decision.ok { color: #6ee7b7; border-color: rgba(16, 185, 129, .6); background: rgba(16, 185, 129, .12); box-shadow: 0 0 24px rgba(16, 185, 129, .25); }
+  .decision.no { color: #fda4af; border-color: rgba(244, 63, 94, .6); background: rgba(244, 63, 94, .12); box-shadow: 0 0 24px rgba(244, 63, 94, .25); }
+  .decision.warn { color: #fcd34d; border-color: rgba(245, 158, 11, .6); background: rgba(245, 158, 11, .1); }
+  .decision small { display: block; font-weight: 500; font-size: 11px; letter-spacing: 0; margin-top: 4px; color: var(--txt-dim); }
+  .factors { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+  .fac { display: grid; grid-template-columns: 150px 1fr 62px; align-items: center; gap: 8px; font-size: 11px; }
+  .fac .nm { color: var(--txt-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fac .trk { position: relative; height: 12px; background: rgba(38, 54, 90, .35); border-radius: 3px; }
+  .fac .trk::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--line-2); }
+  .fac .trk i { position: absolute; top: 0; bottom: 0; border-radius: 3px; transition: all .4s ease; }
+  .fac .v { text-align: right; font-weight: 700; }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .keys button { font-family: var(--mono); font-weight: 800; padding: 9px 6px; border-radius: 5px; cursor: pointer; background: #0a1020; font-size: 11.5px; }
+  .k200 { color: #6ee7b7; border: 1px solid rgba(16, 185, 129, .6); }
+  .k422 { color: #fcd34d; border: 1px solid rgba(245, 158, 11, .6); }
+  .k400 { color: #fda4af; border: 1px solid rgba(244, 63, 94, .6); }
+  .console { background: #050913; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; height: 190px; overflow: auto; font-size: 11.5px; line-height: 1.7; }
+  .console .t { color: var(--txt-mute); }
+  .console .a { color: #86efac; } .console .r { color: #fda4af; } .console .w { color: #fcd34d; } .console .i { color: #93c5fd; }
+  .stat4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+  .stat .h { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--txt-dim); letter-spacing: .5px; }
+  .stat .v { font-size: 18px; font-weight: 800; margin: 6px 0; }
+  .stat .bar { height: 4px; background: var(--bg-2); border-radius: 2px; overflow: hidden; }
+  .stat .bar i { display: block; height: 100%; width: 0; transition: width .4s; }
+  .stat .ft { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--txt-mute); margin-top: 6px; }
+  @media (max-width: 1500px) { .layout { grid-template-columns: 360px minmax(0, 1fr); } .rightcol { grid-column: 1 / -1; } .stat4 { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .viewport { grid-template-columns: 1fr; } .stat4 { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="panel topbar">
+    <div class="row">
+      <span class="brand"><span class="bolt">⚡</span>C.R.E.D.I.T</span>
+      <span class="badge cyan">CreditAI Engine • Live Evaluation (FastAPI)</span>
+      <span class="badge amber">⚡ Modelo: <b id="hModel">—</b></span>
+      <span class="badge green">⚡ Daemon Local <span id="hPort"></span></span>
+      <a class="btn sm" href="/" style="background:linear-gradient(180deg,#1d4ed8,#1e3a8a);border-color:#3b82f6;color:#fff">🖥 HUD Treino ↗</a>
+      <button class="btn sm" id="btnSync">🔄 Sincronizar Modelo</button>
+      <span class="grow"></span>
+      <span class="pill" id="evalPill"><span class="dot"></span><span id="evalState">IDLE</span></span>
+    </div>
+    <div class="telemetry">
+      <span>Predições: <b style="color:var(--green)" id="tN">0</b></span>
+      <span>Aprovação sessão: <b style="color:var(--yellow)" id="tAprov">--%</b></span>
+      <span>Score / Rating: <b style="color:var(--yellow)" id="tScore">—</b></span>
+      <span>Latência P50: <b style="color:var(--rose)" id="tLat">— ms</b></span>
+      <span>Confiança: <b style="color:var(--cyan)" id="tConf">--%</b></span>
+      <span>Limiar: <b style="color:var(--purple)" id="tLim">0.50</b></span>
+      <span>AUC teste: <b style="color:var(--green)" id="tAuc">—</b></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============ ESQUERDA: CONFIGURAÇÃO ============ -->
+    <aside class="panel side">
+      <div class="ptitle">▦ PAINEL DE CONFIGURAÇÃO &amp; MODOS <span class="sub">FastAPI Runtime</span></div>
+      <div class="pbody">
+        <div class="sect" style="margin-top:4px">Modo de Operação</div>
+        <div class="seg" style="margin-top:6px">
+          <button class="on" id="mAval">Avaliar</button>
+          <button id="mBench">Bench</button>
+          <button onclick="location.href='/'">Treino ↗</button>
+        </div>
+
+        <div class="quick">
+          <h4>🏦 Acesso Rápido: Perfis de Demonstração <span class="badge amber" style="font-size:9px">TECLAS 1–4</span></h4>
+          <p>Carregue um proponente típico e avalie o score, a decisão e os fatores explicativos em tempo real.</p>
+          <div class="preset-grid">
+            <button class="btn sm block go" data-p="A">🟢 Baixo Risco</button>
+            <button class="btn sm block orange" data-p="B">🟡 Moderado</button>
+            <button class="btn sm block stop" data-p="C">🔴 Alto Risco</button>
+            <button class="btn sm block violet" data-p="R">🎲 Aleatório</button>
+          </div>
+        </div>
+
+        <div class="sect">Dados do Proponente</div>
+        <div class="f"><div class="lbl">Nome</div><input class="input" id="nome_cliente" /></div>
+        <div class="f"><div class="lbl">Idade <b id="v_idade"></b></div><input type="range" id="idade" min="18" max="100" /></div>
+        <div class="f"><div class="lbl">Score de bureau (300–850) <b id="v_pontuacao_credito"></b></div><input type="range" id="pontuacao_credito" min="300" max="850" /></div>
+        <div class="two">
+          <div class="f"><div class="lbl">Renda mensal (R$)</div><input class="input" type="number" id="renda_mensal" step="250" /></div>
+          <div class="f"><div class="lbl">Valor solicitado (R$)</div><input class="input" type="number" id="valor_emprestimo" step="500" /></div>
+        </div>
+        <div class="two">
+          <div class="f"><div class="lbl">Prazo (meses)</div><select class="input" id="prazo_meses">
+            <option>6</option><option>12</option><option>18</option><option>24</option><option>36</option><option>48</option><option>60</option></select></div>
+          <div class="f"><div class="lbl">Tempo de emprego (anos)</div><input class="input" type="number" id="tempo_emprego_anos" step="0.5" min="0" /></div>
+        </div>
+        <div class="f"><div class="lbl">Uso do limite do cartão <b id="v_utilizacao_cartao"></b></div><input type="range" id="utilizacao_cartao" min="0" max="1" step="0.01" /></div>
+        <div class="two">
+          <div class="f"><div class="lbl">Consultas CPF (6m)</div><input class="input" type="number" id="consultas_6m" min="0" max="30" /></div>
+          <div class="f"><div class="lbl">Inadimplência 24m</div><select class="input" id="inadimplencia_previa"><option value="0">0 — Não</option><option value="1">1 — Sim</option></select></div>
+        </div>
+        <div class="two">
+          <div class="f"><div class="lbl">Moradia</div><select class="input" id="tipo_moradia"><option>PROPRIA</option><option>ALUGADA</option><option>FINANCIADA</option><option>OUTROS</option></select></div>
+          <div class="f"><div class="lbl">Finalidade</div><select class="input" id="finalidade_emprestimo"><option>EDUCACAO</option><option>SAUDE</option><option>NEGOCIOS</option><option>PESSOAL</option><option>QUITACAO_DIVIDAS</option><option>IMOVEL</option></select></div>
+        </div>
+
+        <div class="sect">Política de Decisão</div>
+        <div class="row" style="margin-top:6px;gap:4px">
+          <button class="btn sm" data-lim="0.65">🛡 Conservadora 0.65</button>
+          <button class="btn sm" data-lim="0.50">⚖ Padrão 0.50</button>
+          <button class="btn sm" data-lim="0.35">🚀 Agressiva 0.35</button>
+        </div>
+        <div class="f"><div class="lbl">Limiar de aprovação P(adimplência) ≥ <b id="v_limiar"></b></div><input type="range" id="limiar" min="0.05" max="0.95" step="0.01" value="0.5" /></div>
+        <label class="row muted" style="margin-top:8px;font-size:11px"><input type="checkbox" id="live" checked /> Avaliação ao vivo (ao alterar campos)</label>
+
+        <button class="btn go block" id="btnRun" style="margin-top:14px;padding:12px;font-size:13.5px">▶ INICIAR AVALIAÇÃO <kbd>Espaço</kbd></button>
+        <div class="two" style="margin-top:8px">
+          <button class="btn block" id="btnBench">⏱ Stress Test (500) <kbd>B</kbd></button>
+          <button class="btn block" id="btnReset">🔄 Resetar <kbd>R</kbd></button>
+        </div>
+
+        <div class="runtime">
+          <div><span>Runtime:</span><b>FastAPI + Uvicorn (ASGI)</b></div>
+          <div><span>Algoritmo:</span><b id="rAlg">—</b></div>
+          <div><span>Melhor iteração:</span><b id="rIter">—</b></div>
+          <div><span>Treinado em:</span><b id="rTs" style="color:var(--green)">—</b></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ CENTRO: VIEWPORT ============ -->
+    <main>
+      <div class="panel">
+        <div class="ptitle" style="color:var(--yellow)">🎮 VIEWPORT DO SCORE <span class="badge green" style="font-size:9.5px">ONLINE</span></div>
+        <div class="pbody">
+          <div class="viewport">
+            <div class="gauge-wrap">
+              <svg id="gauge" viewBox="0 0 300 300" width="100%" style="max-width:330px">
+                <defs>
+                  <linearGradient id="gGrad" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#f43f5e" /><stop offset="35%" stop-color="#f59e0b" />
+                    <stop offset="65%" stop-color="#facc15" /><stop offset="100%" stop-color="#10b981" />
+                  </linearGradient>
+                  <filter id="glow"><feGaussianBlur stdDeviation="4" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+                </defs>
+                <g id="ticks"></g>
+                <path id="arcBg" fill="none" stroke="#16223d" stroke-width="18" stroke-linecap="round" />
+                <path id="arcVal" fill="none" stroke="url(#gGrad)" stroke-width="18" stroke-linecap="round" filter="url(#glow)" />
+                <line id="limMark" stroke="#a855f7" stroke-width="3" />
+                <circle id="needle" r="8" fill="#fff" filter="url(#glow)" />
+              </svg>
+              <div class="gauge-center">
+                <div class="sc" id="gScore" style="color:var(--txt-mute)">---</div>
+                <div class="rt" id="gRating">RATING —</div>
+                <div class="fx" id="gFaixa">—</div>
+                <div class="lb">CREDITAI SCORE 0–1000</div>
+              </div>
+            </div>
+            <div>
+              <div class="decision warn" id="decision">AGUARDANDO AVALIAÇÃO<small>Pressione Espaço ou selecione um perfil.</small></div>
+              <div class="sect" style="margin-top:12px">Fatores de Decisão (Δ prob. vs. perfil mediano)</div>
+              <div class="factors" id="factors"></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px;justify-content:space-between">
+            <span class="muted" style="font-size:11px">Status do reflexo: <b style="color:var(--cyan)" id="reflex">—</b></span>
+            <span class="muted" style="font-size:11px">Parcela: <b style="color:var(--yellow)" id="parcela">—</b> • Comprometimento: <b style="color:var(--yellow)" id="comp">—</b></span>
+          </div>
+          <div class="sect">🧪 Laboratório de Contratos HTTP</div>
+          <div class="keys" style="margin-top:6px">
+            <button class="k200" id="t200">200 OK — payload mínimo</button>
+            <button class="k422" id="t422">422 — Pydantic (idade 15)</button>
+            <button class="k400" id="t400">400 — Regra de negócio</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <div class="ptitle">💻 LOGS &amp; DECISÕES DO MOTOR (API CONSOLE) <button class="btn sm" id="clrLog">Limpar</button></div>
+        <div class="pbody"><div class="console" id="console"></div></div>
+      </div>
+    </main>
+
+    <!-- ============ DIREITA: TELEMETRIA ============ -->
+    <aside class="rightcol">
+      <div class="panel">
+        <div class="ptitle">FASE 1: LATÊNCIA DE INFERÊNCIA (ms) <span class="sub">budget ≤ 50 ms</span></div>
+        <div class="pbody"><div class="chartbox" style="height:150px"><canvas id="chLat"></canvas></div></div>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <div class="ptitle" style="color:var(--yellow)">FASE 2: SCORE &amp; PROBABILIDADE <span class="sub">histórico da sessão</span></div>
+        <div class="pbody"><div class="chartbox" style="height:150px"><canvas id="chScore"></canvas></div></div>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <div class="ptitle" style="color:var(--purple)">FASE 3: STRESS TEST <span class="sub" id="benchSub">execute o bench</span></div>
+        <div class="pbody"><div class="chartbox" style="height:150px"><canvas id="chHist"></canvas></div></div>
+      </div>
+      <div class="stat4">
+        <div class="stat"><div class="h"><span>LATÊNCIA</span><span>P50</span></div><div class="v" style="color:var(--cyan)" id="sLat">— ms</div><div class="bar"><i id="bLat" style="background:var(--cyan)"></i></div><div class="ft"><span>Atual</span><span id="sLatA">—</span></div></div>
+        <div class="stat"><div class="h"><span>CONFIANÇA</span><span>P(adimp.)</span></div><div class="v" style="color:var(--green)" id="sConf">--%</div><div class="bar"><i id="bConf" style="background:var(--green)"></i></div><div class="ft"><span>Risco</span><span id="sRisk">—</span></div></div>
+        <div class="stat"><div class="h"><span>INCERTEZA</span><span>Shannon</span></div><div class="v" style="color:var(--amber)" id="sEnt">--%</div><div class="bar"><i id="bEnt" style="background:var(--amber)"></i></div><div class="ft"><span>Entropia</span><span>bits</span></div></div>
+        <div class="stat"><div class="h"><span>COMPROMET.</span><span>parcela/renda</span></div><div class="v" style="color:var(--purple)" id="sComp">--%</div><div class="bar"><i id="bComp" style="background:var(--purple)"></i></div><div class="ft"><span>Ideal</span><span>&lt; 30%</span></div></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="/static/common.js"></script>
+<script src="/static/avaliacao.js"></script>
+</body>
+</html>
